@@ -1,0 +1,138 @@
+services:
+  # Backend сервис (FastAPI)
+  backend:
+    build: ./backend  # Собирает образ из Dockerfile в папке backend
+    volumes:
+      - ./backend:/app  # Монтирует исходный код для live-обновления (dev)
+      - ./backend/logs:/app/logs  # Монтирует папку логов на хост
+      - ./backend/uploads:${UPLOAD_DIR}  # Монтирует папку uploads на хост (путь берётся из .env)
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"  # Пробрасывает порт backend наружу
+    environment:
+      # Основные переменные окружения для backend
+      - ENVIRONMENT=${ENVIRONMENT}  # Среда (development/production/testing)
+      - APP_NAME=${APP_NAME}  # Название приложения
+      - VERSION=${VERSION}  # Версия приложения
+      - DEBUG=${DEBUG}  # Режим отладки
+      - SECRET_KEY=${SECRET_KEY}  # Секретный ключ приложения
+      # Настройки базы данных
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_USE_SSL=${DB_USE_SSL}
+      - DB_POOL_SIZE=${DB_POOL_SIZE}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE}
+      # Настройки обработки аудио
+      - WHISPER_DEFAULT_MODEL=${WHISPER_DEFAULT_MODEL}
+      - UPLOAD_DIR=${UPLOAD_DIR}
+      # Настройки безопасности
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES}
+      - FIRST_ADMIN_USERNAME=${FIRST_ADMIN_USERNAME}
+      - FIRST_ADMIN_PASSWORD=${FIRST_ADMIN_PASSWORD}
+      - FIRST_ADMIN_EMAIL=${FIRST_ADMIN_EMAIL}
+      - FIRST_ADMIN_ENABLED=${FIRST_ADMIN_ENABLED}
+      # Настройки Redis
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - USE_REDIS_CACHE=${USE_REDIS_CACHE}
+      - USE_REDIS_QUEUE=${USE_REDIS_QUEUE}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  # Frontend сервис (React)
+  frontend:
+    build: ./frontend  # Собирает образ из Dockerfile в папке frontend
+    volumes:
+      - ./frontend:/app  # Монтирует исходный код для live-обновления (dev)
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"  # Пробрасывает порт frontend наружу
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # Для корректной работы hot-reload в Docker
+      - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL:-http://localhost:8000}  # URL backend для frontend
+
+  # Сервис базы данных PostgreSQL
+  db:
+    image: postgres:16.3  # Использует официальный образ PostgreSQL
+    restart: always  # Перезапуск при сбое
+    environment:
+      - POSTGRES_USER=${DB_USER}  # Имя пользователя БД
+      - POSTGRES_PASSWORD=${DB_PASSWORD}  # Пароль БД
+      - POSTGRES_DB=${DB_NAME}  # Имя БД
+    volumes:
+      - pgdata:/var/lib/postgresql/data  # Хранение данных БД вне контейнера
+    ports:
+      - "${DB_PORT:-5432}:5432"  # Пробрасывает порт БД наружу
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $DB_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Сервис Redis (кэш и очереди)
+  redis:
+    image: redis:7.2.5  # Использует официальный образ Redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"  # Пробрасывает порт Redis наружу
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Celery worker для фоновых задач
+  celery:
+    build: ./backend  # Использует тот же образ, что и backend
+    command: celery -A core.worker worker --loglevel=info  # Запуск воркера Celery
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+    environment:
+      # Основные переменные окружения для celery
+      - ENVIRONMENT=${ENVIRONMENT}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - USE_REDIS_QUEUE=${USE_REDIS_QUEUE}
+    depends_on:
+      - backend  # Запускать после backend
+      - redis    # Запускать после redis
+      - db       # Запускать после db
+    healthcheck:
+      test: ["CMD", "celery", "-A", "core.worker", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # pgAdmin — веб-интерфейс для управления PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:8.6  # Официальный образ pgAdmin
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}  # Email для входа
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}  # Пароль для входа
+    ports:
+      - "5050:80"  # Пробрасывает порт pgAdmin наружу
+    depends_on:
+      - db  # Запускать после db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/misc/ping"]
+      interval: 30s
+      timeout: 20s
+      retries: 10
+
+# Определение volume для хранения данных PostgreSQL
+volumes:
+  pgdata:

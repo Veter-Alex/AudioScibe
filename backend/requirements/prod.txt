@@ -1,0 +1,2 @@
+# Зависимости для production
+-r base.txt

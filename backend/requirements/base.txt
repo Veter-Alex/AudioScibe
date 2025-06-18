@@ -1,0 +1,10 @@
+# Основные зависимости для проекта
+
+fastapi
+uvicorn[standard]
+psycopg2-binary
+redis
+celery
+loguru
+sqlalchemy
+alembic

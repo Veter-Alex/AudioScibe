@@ -1,0 +1,45 @@
+# IDE
+.vscode/
+.idea/
+
+# Python и FastAPI
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+venv/
+.venv/
+
+# Данные и логи
+*.log
+*.sqlite
+*.wav
+*.mp3
+
+# Celery
+celerybeat-schedule
+
+# PostgreSQL
+pg_dump.sql
+
+# Docker (оставляем Dockerfile и docker-compose.yml в репозитории)
+docker-compose.override.yml
+docker-compose.dev.yml
+
+# Frontend (React, Node.js)
+frontend/node_modules/
+frontend/.env
+frontend/dist/
+build/
+dist/
+coverage/
+
+# Node.js
+npm-debug.log*
+
+# Backend
+backend/venv/
+backend/migrations/versions/*
+
+# Общие файлы
+.env

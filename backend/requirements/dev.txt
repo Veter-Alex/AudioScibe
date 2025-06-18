@@ -1,0 +1,8 @@
+# Зависимости для разработки
+-r base.txt
+black
+isort
+mypy
+ruff
+pytest
+pytest-asyncio
