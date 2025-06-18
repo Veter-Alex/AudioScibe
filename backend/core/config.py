@@ -298,7 +298,7 @@ def get_settings() -> Settings:
     """Возвращает экземпляр настроек приложения с кэшированием."""
     try:
         logger.info("Инициализация настроек приложения")
-        settings = Settings()  # type: ignore[call-arg]
+        settings = Settings()  # инициализация без type: ignore
         logger.info(
             "Настройки успешно загружены",
             app_name=settings.APP_NAME,

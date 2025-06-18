@@ -85,7 +85,7 @@ class AudioFileUploadRequest(BaseModel):
     )
 
     @field_validator("relative_path")
-    def validate_path(cls, v):
+    def validate_path(cls, v: str) -> str:
         if "\\" in v:
             raise ValueError(
                 "Используйте только прямой слэш '/' для разделения директорий"

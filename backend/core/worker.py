@@ -13,5 +13,5 @@ celery_app = Celery(
 
 
 @celery_app.task
-def add(x, y):
+def add(x: int, y: int) -> int:
     return x + y

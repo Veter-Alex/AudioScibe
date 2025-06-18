@@ -38,7 +38,7 @@ def read_root():
 
 
 @app.get("/settings", response_model=dict)
-def get_app_settings():
+def get_app_settings() -> dict:
     """
     Возвращает все текущие настройки приложения (без чувствительных данных).
     """

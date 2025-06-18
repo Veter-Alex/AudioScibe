@@ -30,15 +30,13 @@ async def upload_audio(
             "Название модели Whisper для транскрибирования " "(выберите из списка)"
         ),
     ),
-    relative_path: str = Depends(AudioFileUploadRequest),
+    upload_req: AudioFileUploadRequest = Depends(),
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_async_session),
-):
+) -> AudioFileRead:
     audio = await services.save_audio_file(
-        file, model_name.value, relative_path.relative_path, session
+        file, model_name.value, upload_req.relative_path, session
     )
-    print(f"[DEBUG] Uploaded audio file: {audio.filename}, path: {audio.file_path}")
-    print(f"[DEBUG] Audio file ID: {audio.id}")
     return AudioFileRead.model_validate(audio)
 
 
@@ -48,7 +46,9 @@ async def upload_audio(
     summary="Список аудиофайлов",
     description="Получить список всех загруженных аудиофайлов.",
 )
-async def list_audio_files(session: AsyncSession = Depends(get_async_session)):
+async def list_audio_files(
+    session: AsyncSession = Depends(get_async_session),
+) -> list[AudioFileRead]:
     audios = await services.list_audio_files(session)
     return [AudioFileRead.model_validate(a) for a in audios]
 
@@ -67,7 +67,7 @@ async def delete_audio_directory(
     relative_path: str = Query(
         "", description="Относительный путь внутри модели (может быть пустым)"
     ),
-):
+) -> dict:
     result = await services.delete_directory(model_name.value, relative_path)
     if result["status"] == "error":
         raise HTTPException(status_code=400, detail=result["detail"])
@@ -84,7 +84,7 @@ async def delete_audio_directory(
 )
 async def get_audio_file(
     file_id: int, session: AsyncSession = Depends(get_async_session)
-):
+) -> AudioFileRead:
     audio = await services.get_audio_file(file_id, session)
     if not audio:
         raise HTTPException(status_code=404, detail="Audio file not found")
@@ -98,11 +98,11 @@ async def get_audio_file(
 )
 async def download_audio_file(
     file_id: int, session: AsyncSession = Depends(get_async_session)
-):
+) -> FileResponse:
     audio = await services.get_audio_file(file_id, session)
     if not audio or not audio.file_path:
         raise HTTPException(status_code=404, detail="Audio file not found")
-    return FileResponse(audio.file_path, filename=audio.filename)
+    return FileResponse(str(audio.file_path), filename=str(audio.filename))
 
 
 @router.delete(
@@ -112,7 +112,7 @@ async def download_audio_file(
 )
 async def delete_audio_file(
     file_id: int, session: AsyncSession = Depends(get_async_session)
-):
+) -> dict:
     deleted = await services.delete_audio_file(file_id, session)
     if not deleted:
         raise HTTPException(status_code=404, detail="Audio file not found")

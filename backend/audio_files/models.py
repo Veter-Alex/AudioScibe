@@ -93,7 +93,7 @@ class AudioFile(Base):
         comment="Модель Whisper для транскрибирования",
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Строковое представление объекта AudioFile для отладки и логирования.
         """
